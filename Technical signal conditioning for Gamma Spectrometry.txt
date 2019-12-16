@@ -1,0 +1,213 @@
+Technical signal conditioning for Gamma Spectrometry
+Livio Cicala Science May 17, 2013 9 comments
+ 
+By the measurement of the energy spectrum it is possible to distinguish radioactive isotopes and appreciate their relative abundance. Each isotope produces energy gamma rays focused on one or more lines. The shape of the resulting graph is a kind of "signature" that is used to detect radioactive substances present in the sample under test. The gamma rays are detected individually by special sensors (crystals scintillators, photo-multiplier tubes and photo-diodes) and converted into electrical pulses at a rate proportional to the energy of the gamma ray, normally measured in keV (kilo electron volt). With special software and hardware type MCA (Multi Channel Analyzer) are extracted from the noise pulses and turn them into graphics calibrated keV, easily readable by an operator. This article presents, in Open Source, the results of the latest research on gamma spectrometry amateur with audio signal.
+History of amateur spectrometry
+Until the early 2000s the only units able to do gamma spectrometry were expensive and unstable crock of scrap metal as the one visible in this image.
+
+Of course, after years of use and wet all these switches, potentiometers and switches were beginning to run every other day and what you could measure were often more hardware defects that actual curves of the isotopes.
+Then an Australian professor Marek Dolleiser, he discovered that the ADC of sound cards were so improved that you can get the same results as those expensive equipment. Here you can read the history of the written audio spectrometry by Andrea Bosi.
+In recent years, our research has revealed that not only audio cards can work like the hardware analyzers, but also much better, provided that they are preceded by an appropriate signal conditioning circuit.
+Today a lover of DIY, with good knowledge of electronics, could put together a complete set for spectrometry for less than 100 euros (BGO crystal and photomultiplier tube PmtAdapter in KIT bought on eBay).
+
+BGO crystals with the resolution characteristics are not the best, it would be better to use a Nai (Tl) but would cost about 150Euro or, much better, a HPGe sensor (ultra-pure germanium) which together with the cooling vessel with liquid nitrogen would cost only tens of thousands of euros.
+The signal path
+
+(1) A gamma photon is emitted by a radioactive isotope. His energy is invariable, can do little or a long way, can cross aluminum, plastic and other substances and, even if it comes from another galaxy, its energy will ultimately be exactly the same as when he left.
+(2) The scintillator crystal converts the single photon in a short visible light flash, consisting of thousands of photons, many of them, but not all, are able to get to the photocathode of the photomultiplier tube. Depending on the crystal of the material, its purity and to what is transparent and easy the road, the number of photons that manages to reach the photocathode changes, even between one pulse and the other. The variable number of photons produces an uncertainty in the measure that broadens the lines of the isotopes.
+(3) The photomultiplier tube multiplies the electrons and produces a current pulse. Depending on the photon energy range, the load resistance and the load capacity of the current produced by the tube, it ranges from a few to a few hundred uA uA and the pulse width, from a few hundred nano seconds to a few micro second. A pulse originating from a gamma photon from about 600 keV, it has a width of about 10 volts and a width of 3 uS at the entrance of PmtAdapter.
+(4) The signal conditioning circuit of the PmtAdapter widens the pulse 3US to over 100US and produces a pulse with zero-pole compensation, which goes back to zero "without undershoot".
+(5) The sound card contains a high-pass filter approximately 3 kHz which produces a perfect impulse "Bipolar", with an "undershoot" exactly the same area of ​​the positive part of the pulse. A well-balanced bipolar pulse returns exactly zero, in a short time, leaving no "tails" undershoot or uppershoot.
+A sample implementation
+The techniques presented in this article are available in OpenSource in ThereminoMCA application.
+To lighten the load of "porting" on different operating systems, this article integrates the comments of software sources with the operating theory.
+An Android expert could then rewrite all the software on a tablet and get a set for truly portable gamma spectrometry and low cost.
+
+This is the "signature" of radioactive cesium (Cs-137), easily recognized and therefore much used for calibration. Other well-known signatures by industry experts are americium (Am-241), the Radio (Ra-226) of cobalt (Co-60) and Potassium (K-40).
+
+This is a pulse from a scintillation crystal coupled to a photo-multiplier tube and amplified.
+Recognize the impulses
+The recognition of the pulses is a crucial point for a multichannel analyzer; there are many ways to do it, everyone works well on high-energy pulses, but few are able to work well in the area of ​​very low energies.
+The well-known software PRA, for example, use the recognition of the shape of the "Shape recognition pulse" that works well enough, but eliminates a large number of pulses and considerably slows down the display.
+Intuitively we think that recognizing the pulses from the shape is a good method. This is true when the pulses are high, but when they are small, distorted by the noise and the "ringing", the recognition of form can only do one thing: eliminating them.
+
+Let us pretend to have as "Shape" (form to be recognized) the impulse of this image. Typically the high energy pulses will be more or less similar and "Shape Recognition" will recognize them easily.
+But how they are made the very low pulses with energies below 100 keV?
+
+Here are some - attention that the scale of these images was amplified very upright, in reality the pulses are 10 to 100 times lower than the last.
+Are all deformed by the noise, in large part their shape is not like the high energy pulses. In this situation the "Shape recognition" can only do two things: either delete them all, or you settle for a distant similarity and takes good for all "ringing" noise and all the little bumps that look like a pulse, producing a noise mountain on the left side of the graph covers, moves and confuses the lines of the isotopes.
+Towards a recognition method improved
+We have seen that the "Shape recognition" is slow and produces a lot of noise in the left side of the graph, but is there a better method?
+
+The first image shows a high pulse energy (660 keV), the second a very low pulse energy (32 keV).
+A human, looking at these two images immediately recognizes that the second is a valid impulse, even if completely different in form.
+The software we can succeed, in fact, the red line indicates that the got perfectly in the center.
+The new algorithm, which we developed in 2012 and which are described in this document, island pulses with behavioral techniques "Behavioural", that is not based on form, but on how a pulse behaves differently from the noise.
+Recognition not based on "Shape"
+First of all it is necessary to predict the future, that is, care about the samples that have not yet arrived. Then you pass all pulse in a delay line (a circular buffer) and are read when the pulses do not occur, but after a certain time. In this way we have available simultaneously all the features, even those that follow the impulse.
+Then they control the main features: what is the highest sample of this impulse? There are higher standards in the vicinity? There are other pulses superimposed? The zero line is in place or is lower or higher? What looks like a pulse will probably just noise?
+Then we try to correct any problem to erase the effects of the "ringing" and noise and straighten the line of zero.
+Finally, if all goes well, it stores the impulse otherwise you delete it.
+The elimination rate of this method is minimal, almost "not miss a beat," and this is confirmed in practice, with a high speed of the graphics creation.
+Some users have called these results "The new frontier of spectrometry" (gamma spectrometry but of course we are talking about amateur range - the equipment cooled in liquid helium are another matter entirely)
+audio signal, sampling and "ringing"
+The "ringing", which in English means "ringing", "vibration" or "resonance", is created by the antialiasing filter of the sound card.
+Many think that the ringing depends on the connecting cables or the signal from the amplifier and try to act on these components to eliminate it, but he failed.
+Instead to eliminate the ringing must stretch the few micro seconds produced by photo-multiplier tube to at least 100 uS with an R-C type filter.
+Lengthening the pulses if they lose someone but during normal measures of weakly radioactive samples the number of lost pulses is low. Moreover, the loss is compensated by having more precise pulse so that the speed of setting up of the graph does not decrease but increases.
+
+In the first image we see a very narrow pulse (10 uS) that produces a loud "ringing" while in the second we see a pulse of 100 uS that does not produce "ringing".
+Note also that in the first image the point of maximum is bad season, with too few points, producing inaccurate measurements that greatly widen the lines as shown on the next page.
+Signals unfiltered
+
+The cesium row - In red with pulses 10 uS, in green with pulses of 100 uS.
+In this image you see an unfiltered signal (in red), which produces a considerable enlargement of the cesium line and an increase in the noise floor that is raised up to make disappear the two humps characteristics at about 300 and 450 keV.
+Stretch the pulses makes more precise values ​​championships, tightens the lines of the isotopes, decreases the noise and also does check weaker signals.
+Use wide pulse has only benefits and does not cause side effects. Under normal sizes are measured frequencies around 100 cps so the average distance between two impulses is about 10 milliseconds. Ten milliseconds are 100 times greater than 100us so you lose very few pulses due dell'ammucchiamento (Pile up in English).
+Even with very wide pulse (up to 500 uS) do not occur measuring errors caused by "Pile up" because the software in these cases remove the second pulse.
+Often someone objects that sometimes are measured very radioactive samples and that in these cases the pulses are more frequent, even 10,000 per second, leading to lose many. The reasoning is not wrong, in these cases are also lost 50% of the pulses. But no matter why they have the same pulse so frequent as to create a perfect curve in seconds.
+Causes enlargement of the rows
+
+In red a significant widening of the cesium line in green modest enlargements.
+Many mechanisms contribute to enlarge the lines, the most important are:
+The scintillator material;
+The geometry, the transparency and the surface finish of the scintillator;
+Reflection and refraction of light in the path between the crystal and the PMT cathode tube;
+Noise and "ringing" that distort the signal;
+discrimination errors between pulses and noise;
+Displacements of the zero line of the pulses ( "Base line shifting");
+systematic errors in the measurement software.
+All these mechanisms produce similar errors, mainly the following:
+Enlargement of the lines;
+Lowering of the tip of the lines. In this image the cesium line was normalized to which this effect is not visible;
+Raising of the base line to the left of the rows;
+Raising of the base line to the right of the rows (of minor importance compared to the previous).
+Because the crystals widen the lines?
+And because widen more to the left?
+The crystals scintillators convert photons into photons of visible light range, while converting each photon range is multiplied in a number of photons of light.
+The number of visible light photons produced by each gamma photon depends on the ratio between the frequencies of the two photons (or the ratio of energy which ultimately is the same thing).
+For example, a photon range from 660 keV (Cesium) should produce about 330 thousand photons of light blue-green visible and a photon of 32 keV (americium) produce 16 thousand. However, since the crystals have an efficiency a little 'less than 10%, in the first case will be about twenty-five thousand and in the second about a thousand.
+Photon
+Wavelength
+Energy (approx)
+gamma rays
+0.0001 nm
+0:01 nm
+10 MeV
+100 keV
+X-ray
+0:01 nm
+10 nm
+100 keV
+0.1 keV (100 eV)
+visible light yellow
+400 nm
+0.0025 keV (2.5 eV)
+blue-green visible light
+500 nm
+0.002 keV (2 eV)
+red visible light
+700 nm
+0.0015 keV (1.5 eV)
+Until the gamma ray is not converted into visible light has a quantum integrity. O collides with something and is detected, or passes through undisturbed.
+As an example, consider a gamma ray from 32 keV, when this gamma ray collides in a sensitive area and produces a flash of visible photons have the same energy as when he left. This even if it is passed through the air and other substances such as aluminum, plastic and crystal and although it has come a long way, for example from another galaxy up to our, the end will have exactly the same energy of 32 keV when it is It was created.
+The energy of a photon Gamma can not be "attenuated" in any way, or it stops and then the gamma photon disappears converting into something else, or continues its way unmolested.
+Google Translate for Business:Translator ToolkitWebsite TranslatorGlobal Market Finder
+
+After converting the gamma photon in many photons of light, however, things change. The thousands of photons of light that make up a single pulse are yet to get to the photo-cathode of the photomultiplier tube, and many of them fall by the wayside.
+The chances of getting lost are many, part of photons collides with particles, particles, or fractures of the crystal inaccuracies, others are born with a direction that takes them to bounce several times on the glass walls and disappear before arriving at their destination, others may get lost while crossing the interface between crystal and glass of PMT.
+In some cases, for quite a few fortune out of the total, of the 1000 original photons there are only 900, 500 only rarely, and in some rare cases a lot less too. This produces a widening of the lines to the left. Enlargement to the right is less because, if they are left in a thousand, a thousand more of the original may not arrive from there.
+enlargement of clearing lines
+The crystals scintillators produce a widening of the lines, their resolution is always too low. The BGO crystals have a width from 12%, the crystals NaI (Tl) arrive at 6% and the HPGe sensors (ultra-pure germanium) cooled in liquid nitrogen, also arrive to 0.1%.
+The resolution percentage is measured in FWHM (Full Width at Half Maximum) in practice it is the line width (difference of energies measured at half the height of the row), multiplied by 100 and then divided by the energy of the center of the line.
+A resolution of the compensation algorithm works in a similar way to increase algorithms of definition of the images and can earn some percentage point and easily bring the BGO below 10% and the NaI (Tl) to below 5%.
+Even small improvements for a resolution have a great effect on the visibility of the lines of the isotopes and greatly lower the noise floor, making dull the smaller lines, that would otherwise be invisible.
+
+Here you see one of the radio spectrum with a crystal NaI (Tl). Without compensation for the crystal resolution (in red) and with compensation which significantly lowered the noise floor (in green).
+The base line and the "Baseline Restoring"
+
+I would like to always have well-aligned pulse on the zero line, as in this image, but few hardware can keep the baseline so firm.
+To obtain the base line always stops throughout the signal chain should work completely in continuous, without decoupling capacitors. But a totally DC coupling would cause many problems, including the displacement of the base line from zero as the temperature varies.
+The best solution is to remove the DC component is that all low frequencies (to reduce the total noise) and design the filters to produce "balanced" and "bipolar" pulse, as discussed below.
+However, even with the best filters, a good software must be able to live with a baseline unstable as in the next image.
+
+The "BaseLine" tends to decrease when there are many impulses and to get up in the pauses between pulses.
+As a result the pulses are measured with the lowest energy of the real (only the part that rises above the red line) and this causes a broadening of the lines and an increase in the noise floor on the left side of the rows.
+The bipolar pulses
+To minimize the displacements of the base line is good to use the "bipolar pulses."
+
+The "bipolar" pulses are characterized by a negative signal area that follows the positive main pulse.
+The first part (positive) and the second part (negative) must have the same area.
+This type of signal is obtained starting from a positive signal "without undershoot" and adding a high-pass filter 6dB per octave with a cutoff frequency of about 5 kHz.
+The high pass filter also has the beneficial effect of eliminating noise at the bottom of the spectrum.
+
+Question: Why in PmtAdapter it takes great care to produce a signal without undershoot and then degrade it in this way?
+Answer: Because only from a "signal without undershoot" you can produce a balanced bipolar pulse, with the positive and negative areas perfectly equal to each other that eliminate the slippages of the baseline.
+A method of Baseline Restoring
+Since correct the "baseline" in hardware is difficult and expensive it is good that the software can make this correction. Moreover, even the best signal filters do not produce an absolutely stable baseline and an "end correction" is always helpful.
+The best point for measuring the zero voltage of the base line is the area immediately prior to the pulse. The algorithm we propose is the average of all samples for a number of uS (defined by "Size"), which precedes the pulse center of a number of uS (defined by the "Position").
+The average of these values ​​is used as a "best estimate" of the zero level.
+
+In this blue rectangle indicates the area where the sampling is carried out. Since each square is worth about 130uS, it is estimated that the sampling was set for a width of 50uS, and a distance from the pulse center also of 50uS.
+The Baseline Test
+The method of integrating the immediately preceding impulse area provides good results but has minor defects that can be improved.
+To improve the accuracy of the "Baseline" voltage detection you should increase the size of the sampling area, so as to make a good average of the disorders and of the "ringing" but, unfortunately, enlarging the area its center moves away from 'pulse and this causes inaccuracies when the base line is not horizontal.
+In order to increase the size of the sample it is divided into two separate areas and measure two separate medium. The two measured values ​​allow to calculate the slope of the baseline and to accurately correct the position of the zero pulse.
+
+The two averages (red dots on the left) are used to calculate the zero pulse position in the center (third red dot).
+The new "Baseline Test" implemented in version 4 of ThereminoMCA, is a marked improvement compared to the Baseline Restoring version 3 and also lets you eliminate too deformed pulses with settings "Max slope" and "Max noise".
+Overlapping pulses and the "pileup"
+
+The first image shows a pulse without "PileUp", the second two pulses with "PileUp".
+Here is a fine example of "pileup": the second pulse arrives when the first is not over yet.
+The second pulse leans on the first, is higher than it should, and end up in the wrong bin.
+Since the relative position of the two random pulses is also the destination bin it is, with the result of raising the noise floor in a uniform manner. If PileUp are very frequent noise rises to the point of masking the useful lines.
+
+
+Both the recognition of the shape of the pulses method "Shape Recognition" (used by the PRA), both the "behavioral" method (used by ThereminoMCA) manage to eliminate the defects caused by the PileUp however, as already seen in the previous pages, also in this case the behavioral method is better, here is the behavior of the two methods:
+- The "Shape Recognition" recognizes that the form is wrong and discard both impulses.
+- The algorithm described by us is properly the first pulse and discards only the second.
+The width of the pulses
+The incoming pulses from the PMT tube are rectangular and very narrow (less than uS) but just a minimum capacity (eg 50cm shielded cable) to stretch it to about 3 uS.
+
+Here we see a pulse measured just after the high voltage decoupling capacitor. The tension on the pipe is 900 volts and the photon that generated it was from about 1 MeV. You do not see well, but the tip is high nearly 10 volts and is largely about 3US.
+This pulse has its maximum energy at around 300 kHz which are more than ten times the bandwidth of sound cards (always 20 kHz even with 192 kHz sampling).
+If we send a similar impulse directly to the sound card, it will be almost completely eliminated by the input filter and the signal to noise ratio will decrease tremendously.
+A second effect of such a rapid pulse is the production of a noticeable "ringing" in the "anti-aliasing" filter of the sound card. This image shows a ringing for almost 20% of the pulse.
+The sound cards filters are adjusted to the normal audio signals that never contain components at frequencies above 20 or 30 kHz, and are about 1 volt, but produce a loud ringing if it becomes overloaded with 10 Volts to 300 kHz.
+
+Another flaw of narrow pulses is to have the tip of the needle, so if the sample does not happen exactly at the tip, the measured value becomes inaccurate, and the lines widen.
+The hardware filters for signal conditioning
+
+The outline of this is just an example and does not correspond to PmtAdapter the latest versions for the final diagrams, read the documentation of PmtAdapter.
+This simulation shows how the first cell of the filter broadens the signal without rounding the tip.
+Only two low pass consecutive cells you get a rounded tip, that is what is often called the "Gaussian pulse" for its resemblance to the well-known curve "Gaussian" widely used in statistics.
+Bandwidth
+Seen in terms of bandwidth the result of all the filters is as follows:
+Maximum gain of around 3 kHz.
+Attenuation of 18 dB / oct over 6 kHz that: eliminates high frequency noise, slows the rising edge and minimizes "ringing" generated by the sound card.
+Attenuation of 6 dB per octave below 3 kHz: transforms the pulse "bipolar," eliminates low-frequency noise and cuts (of 35 dB!) The hum at mains frequency. uce minimizing the "ringing" generated by the sound card.
+Attenuation of 6 dB per octave below 3 kHz: transforms the pulse "bipolar," eliminates low-frequency noise and cuts (of 35 dB!) The hum at mains frequency.
+
+
+This image represents the energy of the pulses at various frequencies and has been produced with a cesium sample to have many pulses per second (over 600) and with the AAD set to integrate in time the response graph in frequency ( "speed parameter" almost to a minimum).
+The noise caused feeder
+The photo-multiplier tube has a very low and constant consumption, just feed it through two cells 1 M ohms + 47 nF and all the noise disappears.
+Part of the switching noise may still pass through the air to the small capacity that exists between the power supply components and those of the audio signal circuit, to avoid it you have to add a metallic shield of aluminum or copper.
+You should also pay attention to the "ground loops" that is too many masses and masses arranged bad and even pulse current on the feed mass that produces impulsive noise on the input of the sound card.
+Only with an external USB sound card, modified with high-pass filter on the inside, it was possible to reduce noise below 300 uV pep (70 uVeff). With sound cards located on the motherboard of the PC the inevitable "ground loop" does not allow to fall below the milli-volts.
+the PmtAdapter
+This power (and signal conditioning), solves all the problems described above, completely eliminates ringing and produces "Gaussian" pulses with very low noise.
+Unlike many commercial power supplies, not stabilized, which require ten minutes preheating, this PmtAdapter contains a feedback circuit, which keeps the stable voltage, even in the presence of strong temperature variations. In this way the calibration remains accurate over time and the rows of the isotopes do not move and do not widen.
+
+
+Software, electrical schematics, simulations and DIY projects
+Downloading the software (freeware and open source)
+electrical diagrams and simulations (open hardware)
+Blog on Gamma spectrometry (here are also the PCB)
+Spectra of example
+Blog on hardware test for spectrometry
+Hardware, DIY and kits
+Images and Video spectrometry and hardware modules
+An overview of the modular components of the system
+ Tags: digital signal processing, signal processing, open source, gamma spectrometry
